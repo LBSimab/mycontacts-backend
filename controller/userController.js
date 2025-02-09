@@ -1,5 +1,6 @@
 const AsyncHandler = require("express-async-handler");
 const User = require("../models/userModel.js");
+const jwt = require("jsonwebtoken");
 const bycrypt = require("bcrypt");
 
 //@des register user
@@ -29,13 +30,13 @@ const registerUser = AsyncHandler(async (req,res) => {
     });
     console.log(`user created ${user}`);
     if(user){
-        res.status(201).json({
+        res.status(201).json({  
             _id:user.id,
             username:user.username
         })
 
     }
-    else{rse.status(400);
+    else{res.status(400);
         throw new Error("user data is not valid");
 
 
@@ -52,8 +53,33 @@ const registerUser = AsyncHandler(async (req,res) => {
 //@acces public
 
 const loginUser = AsyncHandler(async (req,res) => {
+    const {email,password}= req.body;
+    if(!email||!password){
+res.status(400).json("must provide email and password");
 
-    res.json({msg:"login"});
+    }
+    const user = await User.findOne({email});
+    //compare password with hash password
+    if(user&&(await bycrypt.compare(password,user.password))){
+        const accesToken = jwt.sign({
+            user: {
+                username:user.username,
+                email:user.email,
+                _id:user.id
+            }
+
+        },process.env.ACCESS_TOKEN_SECRET,{expiresIn:"45m"});
+
+
+res.status(200).json({accesToken});
+
+    }else{
+
+        res.status(401);
+        throw new Error("email or password was incorrect!");
+    }
+    
+   
 
 })
 
@@ -65,8 +91,8 @@ const loginUser = AsyncHandler(async (req,res) => {
 
 
 const currentUser = AsyncHandler(async (req,res) => {
-
-    res.json({msg:"current also private shiishhh"});
+    
+    res.json(req.user);
 
 })
 
